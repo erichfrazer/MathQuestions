@@ -1,7 +1,14 @@
-#include <iostream>
+#define _CRT_SECURE_NO_WARNINGS
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <ctype.h>
+#include <string.h>
 #include <assert.h>
+#include <time.h>
+#include <stdbool.h>
 
-enum MathOp
+typedef enum _Operator
 {
     DEAD = -2, // math arg already used
     LONE = -1, // the last arg that doesn't have an operator
@@ -9,19 +16,19 @@ enum MathOp
     MINUS,
     MULTIPLY,
     DIVIDE
-};
+} Operator;
 
-struct NumberFraction
+typedef struct _Fraction
 {
     int Numerator;
     int Denominator;
-};
+} Fraction;
 
-struct MathArg
+typedef struct _ValueAndOp
 {
-    NumberFraction Value;
-    MathOp Op;
-};
+    Fraction Value;
+    Operator Op;
+} ValueAndOp;
 
 // 89 + 34 * 941 * 243 =
 // 4 'args', each arg is a number + an operator type
@@ -59,7 +66,7 @@ struct MathArg
 // arg1's value becomes 0 and it's operator is 'DEAD'
 // the only thing left with operator 'LONE' is the answer.
 
-const char* GetMathOpString(MathOp op) // 89 + 34 * 941 * 243 
+const char* GetMathOpString(Operator op) // 89 + 34 * 941 * 243 
 {
     switch (op)
     {
@@ -80,17 +87,17 @@ const char* GetMathOpString(MathOp op) // 89 + 34 * 941 * 243
     }
 }
 
-bool IsZero(NumberFraction A)
+bool IsZero(Fraction A)
 {
     return A.Numerator == 0 ? true : false;
 }
 
-bool IsInvalid(NumberFraction B)
+bool IsInvalid(Fraction B)
 {
     return B.Denominator == 0 ? true : false;
 }
 
-void PrintValue(NumberFraction n)
+void PrintValue(Fraction n)
 {
     if (n.Denominator == 0)
     {
@@ -127,7 +134,7 @@ void PrintValue(NumberFraction n)
 
 }
 
-void PrintExpression(MathArg* pMathArgs, int Count)
+void PrintExpression(ValueAndOp* pMathArgs, int Count)
 {
     // print the entire equation
 
@@ -145,7 +152,7 @@ void PrintExpression(MathArg* pMathArgs, int Count)
 // flip both top and bottom if the denominator is negative. This
 // works for 0 on top too, since -0 is equal to 0
 
-void EnsureDenominatorIsPositive(NumberFraction* pNum, bool bPrint)
+void EnsureDenominatorIsPositive(Fraction* pNum, bool bPrint)
 {
     if (pNum->Denominator < 0)
     {
@@ -160,7 +167,7 @@ void EnsureDenominatorIsPositive(NumberFraction* pNum, bool bPrint)
 
 // simplify this number to be the simplest fraction it can be.
 
-void Simplify(NumberFraction* pNum, bool bPrint)
+void Simplify(Fraction* pNum, bool bPrint)
 {
     EnsureDenominatorIsPositive(pNum, bPrint);
 
@@ -170,6 +177,8 @@ void Simplify(NumberFraction* pNum, bool bPrint)
     }
 
     bool simplifiedSomething = false;
+
+    // find any # that is evenly divisible in the numerator and the denominator
 
     for (int i = 2; i < pNum->Denominator / 2; i++)
     {
@@ -205,7 +214,7 @@ void Simplify(NumberFraction* pNum, bool bPrint)
 
 // only called for add. Don't call when eiter denominator is 0
 
-void ConvertToCommonDenominator(NumberFraction* pA, NumberFraction* pB, bool bPrint) // 9/5 + 10/6  54/30 + 50/30 104/30 = 3 r 14/30
+void ConvertToCommonDenominator(Fraction* pA, Fraction* pB, bool bPrint) // 9/5 + 10/6  54/30 + 50/30 104/30 = 3 r 14/30
 {
     // don't let the denominator be negative... make the numerator negative instead
     // this works even if the numerator is 0. 
@@ -222,12 +231,12 @@ void ConvertToCommonDenominator(NumberFraction* pA, NumberFraction* pB, bool bPr
     pB->Denominator *= ScaleB;
 }
 
-NumberFraction AddTwoNumbers(NumberFraction A, NumberFraction B, bool bPrint)
+Fraction AddTwoNumbers(Fraction A, Fraction B, bool bPrint)
 {
     if (IsInvalid(A) || IsInvalid(B))
     {
         // anything plus invalid is invalid. We'll just return a generic invalid # as the result. If we try to use this in any other ops, they'll be invalid too
-        NumberFraction invalid;
+        Fraction invalid;
         invalid.Numerator = 1;
         invalid.Denominator = 0;
         return invalid;
@@ -236,30 +245,30 @@ NumberFraction AddTwoNumbers(NumberFraction A, NumberFraction B, bool bPrint)
     if (IsZero(B)) return A;
 
     ConvertToCommonDenominator(&A, &B, bPrint);
-    NumberFraction Result;
+    Fraction Result;
     Result.Numerator = A.Numerator + B.Numerator;
     Result.Denominator = A.Denominator;
     Simplify(&Result, bPrint);
     return Result;
 }
 
-NumberFraction SubTwoNumbers(NumberFraction A, NumberFraction B, bool bPrint)
+Fraction SubTwoNumbers(Fraction A, Fraction B, bool bPrint)
 {
     // subtraction is simply addition of the -. Only negate the numerator, not the denominator.
     // it's okay if it's 0, since -0 is equal to 0
 
-    NumberFraction NegativeB = B;
+    Fraction NegativeB = B;
     NegativeB.Numerator = -NegativeB.Numerator;
     return AddTwoNumbers(A, NegativeB, bPrint);
 }
 
-NumberFraction MultiplyTwoNumbers(NumberFraction A, NumberFraction B, bool bPrint)
+Fraction MultiplyTwoNumbers(Fraction A, Fraction B, bool bPrint)
 {
     if (IsInvalid(A) || IsInvalid(B))
     {
         // anything multiplied by invalid is invalid. 
         // We'll just return a generic invalid # as the result. If we try to use this in any other ops, they'll be invalid too
-        NumberFraction invalid;
+        Fraction invalid;
         invalid.Numerator = 1;
         invalid.Denominator = 0;
         return invalid;
@@ -268,7 +277,7 @@ NumberFraction MultiplyTwoNumbers(NumberFraction A, NumberFraction B, bool bPrin
     // this works even if one is infinite or one is zero.
     // A/B * C/D if infinity will work out to be (A*C) / (B*D). If one is infinite, the result will be infinite, which is true.
     // Could end up being 0/0 which again, is technically infinite?
-    NumberFraction result;
+    Fraction result;
     result.Numerator = A.Numerator * B.Numerator;
     result.Denominator = A.Denominator * B.Denominator;
 
@@ -278,31 +287,31 @@ NumberFraction MultiplyTwoNumbers(NumberFraction A, NumberFraction B, bool bPrin
     return result;
 }
 
-NumberFraction DivideTwoNumbers(NumberFraction A, NumberFraction B, bool bPrint)
+Fraction DivideTwoNumbers(Fraction A, Fraction B, bool bPrint)
 {
     if (IsInvalid(A) || IsInvalid(B))
     {
         // anything multiplied by invalid is invalid. 
         // We'll just return a generic invalid # as the result. If we try to use this in any other ops, they'll be invalid too
-        NumberFraction invalid;
+        Fraction invalid;
         invalid.Numerator = 1;
         invalid.Denominator = 0;
         return invalid;
     }
 
-    NumberFraction result;
+    Fraction result;
     result.Numerator = A.Numerator * B.Denominator;
     result.Denominator = A.Denominator * B.Numerator;
     Simplify(&result, bPrint);
     return result;
 }
 
-void GetTwoMathOpIndexes(MathArg* pMathArgs, int Count, int* pLeftIndex, int* pRightIndex)
+void GetTwoMathOpIndexes(ValueAndOp* pMathArgs, int Count, int* pLeftIndex, int* pRightIndex)
 {
     // find the highest priority math operation. within the same operator, priority is left to right
     // the operation for the last arg in the list is always NONE, so we can ignore it
 
-    MathOp HighestOperation = DEAD;
+    Operator HighestOperation = DEAD;
     int BestLeftArgIndex = 0;
     for (int i = 0; i < Count - 1 ; i++)
     {
@@ -335,7 +344,7 @@ void GetTwoMathOpIndexes(MathArg* pMathArgs, int Count, int* pLeftIndex, int* pR
     *pRightIndex = BestRightArgIndex;
 }
 
-int DoHighestPriMathArg(MathArg* pMathArgs, int Count, bool bPrint)
+int DoHighestPriMathArg(ValueAndOp* pMathArgs, int Count, bool bPrint)
 {
     // find two things to operate upon
 
@@ -344,9 +353,9 @@ int DoHighestPriMathArg(MathArg* pMathArgs, int Count, bool bPrint)
 
     // switch on the operator and do the operation
 
-    MathOp op = pMathArgs[LeftIndex].Op;
+    Operator op = pMathArgs[LeftIndex].Op;
 
-    NumberFraction Answer = { 0 };
+    Fraction Answer = { 0 };
     switch (op)
     {
     case PLUS:
@@ -376,7 +385,7 @@ int DoHighestPriMathArg(MathArg* pMathArgs, int Count, bool bPrint)
     return LeftIndex; // this is the index with the answer
 }
 
-NumberFraction EvaluateExpression(MathArg* pMathArgs, int Count, bool bPrint)
+Fraction EvaluateExpression(ValueAndOp* pMathArgs, int Count, bool bPrint)
 {
     int c = Count - 1; // process one less time than count of numbers
     int AnswerIndex = 0;
@@ -397,13 +406,13 @@ int main()
 {
     srand(time(NULL));
 
+    int argcount = 4;
+    ValueAndOp* pMathArgs = malloc(sizeof(ValueAndOp) * argcount);
+    ValueAndOp* pMathArgsCopy = malloc(sizeof(ValueAndOp) * argcount);
+
     for (int trial = 0; trial < 10000; trial++)
     {
-        int argcount = 4;
-        MathArg* pMathArgs = new MathArg[argcount];
-        MathArg* pMathArgsCopy = new MathArg[argcount];
-
-        NumberFraction Answer;
+        Fraction Answer;
         Answer.Numerator = 1;
         Answer.Denominator = 1;
 
@@ -429,7 +438,7 @@ int main()
 
                 if (i != argcount - 1)
                 {
-                    pMathArgs[i].Op = (MathOp)(rand() % 4); // we started valid math operators at 0
+                    pMathArgs[i].Op = (Operator)(rand() % 4); // we started valid math operators at 0
                 }
                 else
                 {
@@ -437,7 +446,7 @@ int main()
                 }
             }
 
-            memcpy(pMathArgsCopy, pMathArgs, argcount * sizeof(MathArg));
+            memcpy(pMathArgsCopy, pMathArgs, argcount * sizeof(ValueAndOp));
 
             Answer = EvaluateExpression(pMathArgs, argcount, false /*print*/ );
             if (IsInvalid(Answer))
@@ -447,14 +456,61 @@ int main()
 
         } while (IsInvalid(Answer));
 
-        // PrintExpression(pMathArgsCopy, argcount);
+        PrintExpression(pMathArgsCopy, argcount);
         Answer = EvaluateExpression(pMathArgsCopy, argcount, false /*print*/);
 
         printf("The final answer is: ");
         PrintValue(Answer);
         printf("\n\n");
 
-        delete[] pMathArgs;
-        delete[] pMathArgsCopy;
+        printf("Enter whole numbers normally, and mixed fractions as whole# R numerator#/denominator#.\nYou can, but don't need to, simplify the fraction\n");
+        printf("Answer:");
+
+        Fraction UserAnswer;
+        UserAnswer.Numerator = 1;
+        UserAnswer.Denominator = 1;
+
+        bool IsWholeNumber = Answer.Denominator == 1;
+
+        bool theyEnteredFraction = false;
+        char buf[256];
+        gets_s(buf, 256);
+        for (int i = 0; i < strlen(buf); i++)
+        {
+            if (buf[i] == 'R')
+            {
+                theyEnteredFraction = true;
+                break;
+            }
+        }
+
+        if (theyEnteredFraction)
+        {
+            int whole;
+            char R;
+            char DivideSymbol;
+            int numerator;
+            int denominator;
+            sscanf(buf, "%d %c %d %c %d", &whole, &R, &numerator, &DivideSymbol, &denominator);
+            UserAnswer.Numerator = whole * denominator + numerator;
+            UserAnswer.Denominator = denominator;
+        }
+        else
+        {
+            UserAnswer.Numerator = atoi(buf);
+        }
+        Simplify(&UserAnswer, true);
+
+        if (UserAnswer.Numerator != Answer.Numerator || UserAnswer.Denominator != Answer.Denominator)
+        {
+            printf("nope.\n");
+        }
+        else
+        {
+            printf("You guessed it! :-) \n");
+        }
     }
+
+    free(pMathArgs);
+    free(pMathArgsCopy);
 }
